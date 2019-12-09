@@ -1,5 +1,5 @@
 # MITgcmtools-py
-Hand crafted python tools to play with the MITgcm's output. Not a coherent package, but this might help others.
+Hand crafted python tools to play with the MITgcm's output. Not a coherent package, but this might help others. All tools here were used in order to perform the data analysis for the upcoming paper "Vertical heat fluxes beneath idealized sea ice leads in large-eddy simulations: comparison with observations from the SHEBA experiment" by Bourgault, Straub, Nadeau, Duquette and Tremblay, to be published in JPO somewhere in 2020.
 
 This repo and "package" contains three modules. I tried to stay general when writing them, but they might be quite specific to my configuration. Example : my model was cartesian, I haven't tested any of this with other geometries.
 
