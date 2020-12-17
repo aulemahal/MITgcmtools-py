@@ -34,13 +34,15 @@ def _parse_namelist_val(val):
         raise err
 
 
-def parse_namelist(file, flat=False, silence_cast_errors=False):
+def parse_namelist(file, parse=True, flat=False, silence_cast_errors=False):
     """Read a FOTRAN namelist file into a dictionary.
 
     PARAMETERS
     ----------
     file : str or Path
         Path to the namelist file to read.
+    parse : bool
+        Parse values to python types. If False, keep values as strings.
     flat : bool
         If True, flattens the output by merging all namelists of the file together.
     silence_cast_errors : bool
@@ -74,17 +76,18 @@ def parse_namelist(file, flat=False, silence_cast_errors=False):
                 data[current_namelist] = {}
         else:
             field, value = map(str.strip, line[:-1].split("="))
-            try:
-                value = _parse_namelist_val(value)
-            except ValueError as err:
-                if silence_cast_errors:
-                    warn(
-                        "Unable to cast value {} at line {}".format(
-                            value, raw_lines.index(line)
+            if parse:
+                try:
+                    value = _parse_namelist_val(value)
+                except ValueError as err:
+                    if silence_cast_errors:
+                        warn(
+                            "Unable to cast value {} at line {}".format(
+                                value, raw_lines.index(line)
+                            )
                         )
-                    )
-                else:
-                    raise err
+                    else:
+                        raise err
 
             if "(" in field:  # Field is an array
                 field, idxs = field[:-1].split("(")
@@ -118,6 +121,27 @@ def parse_namelist(file, flat=False, silence_cast_errors=False):
             data.update(data.pop(namelist))
 
     return data
+
+
+def print_namelist(data, f):
+    """Print a namelist dictionary to file.
+    
+    Parameters
+    ----------
+    data : dict
+        Namelist as read by parse_namelist with parse=False
+    f : file-like obj
+        Obj exposing a write method.
+    """
+    f.write("# ====================\n# | Model parameters |\n# ====================\n#\n")
+    headers = [('PARM01', '# Continuous equation parameters'), ('PARM02', '# Elliptic solver parameters'),
+               ('PARM03', '# Time stepping parameters'), ('PARM04', '# Gridding parameters'), 
+               ('PARM05', '# Input datasets')]
+    for sec, header in headers:
+        f.write(f'{header}\n &{sec}\n')
+        for key, val in data[sec].items():
+            f.write(f' {key}={val},\n')
+        f.write(' &\n\n')
 
 
 def open_runfolder(
@@ -158,6 +182,7 @@ def open_runfolder(
     folder = Path(folder)
 
     data = parse_namelist(folder / "data", flat=True, silence_cast_errors=True)
+    data.setdefault('deltat', data.get('deltatclock', data.get('deltatmom')))
     diags = {}
     if prefixes == "diag":
         try:
@@ -234,6 +259,7 @@ def open_runfolder(
         _, full = datasets.popitem(last=False)
         for dataset in datasets.values():
             full = full.merge(dataset)
+        full.attrs['config'] = data
         datasets = {"full": full}
 
     if len(datasets) > 0:

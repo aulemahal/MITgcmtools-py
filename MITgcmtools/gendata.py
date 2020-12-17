@@ -19,6 +19,7 @@ from pathlib import Path
 from warnings import warn
 import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
+import xarray as xr
 from .common import baseArgParser, _sizeParser, _listParser, COLORS, parse_kwarg
 
 PRESETS = []
@@ -31,22 +32,33 @@ OPERATORS = {
 }
 
 
+def _get_np_from_xr(arr):
+    if isinstance(arr, xr.DataArray):
+        if {'x', 'y'} == set(arr.dims):
+            arr = arr.transpose('x', 'y')
+        elif {'x', 'y', 'z'} == set(arr.dims):
+            arr = arr.transpose('x', 'y', 'z')
+        return arr.values
+    return arr
+
 def writeIEEEbin(filename, arr, precision=64):
     """Write a numpy array to a IEEE (Big-Endian) binary file."""
-    if (
-        arr.ndim == 2
-    ):  # Python is in C-layout (X, Y, Z), so we have to flip to F-layout (Z, Y, X)
+    arr = _get_np_from_xr(arr)
+    # Python is in C-layout (X, Y, Z), so we have to flip to F-layout (Z, Y, X)
+    if arr.ndim == 2: 
         arr = arr.T
-    else:
+    elif arr.ndim == 3:
         arr = arr.swapaxes(0, 2)
     # Precision is in bits, the dtype is in Bytes. > : IEEE, f : float, 4/8 : precision
-    print(
-        "Writing data of shape {} to file {} with precision of {} bits".format(
-            arr.shape, filename, precision
-        )
-    )
-    arr.astype(">f{:d}".format(precision // 8)).tofile(filename)
+    print(f"Writing data of shape {arr.shape} to file {filename} with precision of {precision} bits")
+    arr.astype(">f{:d}".format(precision // 8)).tofile(str(filename))
 
+
+def write_concatenate(filename, *arrs, precision=64):
+    """Write multiple numpy arrays to a single file."""
+    arrays = [_get_np_from_xr(arr) for arr in arrs]
+    conc = np.stack(arrays, axis=-1)
+    writeIEEEbin(filename, conc, precision=precision)
 
 def readIEEEbin(filename, shape, precision=64):
     """Read a IEEE (Big-Endian) binary file.
@@ -59,11 +71,13 @@ def readIEEEbin(filename, shape, precision=64):
         precision -- number of bits for each float (default: {64} (8 B))
     """
     arr = np.fromfile(
-        filename, dtype=np.dtype(">f{:d}".format(precision // 8))
-    ).reshape(shape)
+        str(filename), dtype=np.dtype(">f{:d}".format(precision // 8))
+    ).reshape(shape[::-1])
     if arr.ndim == 2:
         return arr.T
-    return arr.swapaxes(0, 2)
+    if arr.ndim == 3:
+        return arr.swapaxes(0, 2)
+    return arr
 
 
 def get_grid(size, mode="", levels=None):

@@ -126,15 +126,23 @@ def vort3(d, g=None, **kwargs):
     dxC = d.get("dxC", d.XC[1] - d.XC[0])
     dyC = d.get("dyC", d.YC[1] - d.YC[0])
     rAz = d.get("rAz", dxC * dyC)
+    if 'maskW' in d:
+        UVEL = d.UVEL.where(d.maskW)
+    else:
+        UVEL = d.UVEL
+    if 'maskS' in d:
+        VVEL = d.VVEL.where(d.maskS)
+    else:
+        VVEL = d.VVEL
     zeta = (
         -g.diff(
-            d.UVEL * dxC,
+            UVEL * dxC,
             "Y",
             boundary="" if g.axes["Y"]._periodic else "fill",
             fill_value=np.nan,
         )
         + g.diff(  # The long if else is manage cases where I take only
-            d.VVEL * dyC,
+            VVEL * dyC,
             "X",
             boundary="" if g.axes["X"]._periodic else "fill",
             fill_value=np.nan,
@@ -158,10 +166,14 @@ def vort2(d, g, **kwargs):
         )
     else:
         drC = abs(d.Zl[1] - d.Zl[0])
+    if 'maskW' in d:
+        UVEL = d.UVEL.where(d.maskW)
+    else:
+        UVEL = d.UVEL
     dxC = d.get("dxC", d.XC[1] - d.XC[0])
     rAw = d.get("rAw", dxC * drC)
     zeta = (
-        g.diff(d.UVEL * dxC, "Z", boundary="fill", fill_value=np.nan)
+        g.diff(UVEL * dxC, "Z", boundary="fill", fill_value=np.nan)
         * np.sign(d.Zl[1] - d.Zl[0])
         - g.diff(
             d.WVEL * abs(drC),
@@ -188,6 +200,10 @@ def vort1(d, g, **kwargs):
         )
     else:
         drC = abs(d.Zl[1] - d.Zl[0])
+    if 'maskS' in d:
+        VVEL = d.VVEL.where(d.maskS)
+    else:
+        VVEL = d.VVEL
     dyC = d.get("dyC", d.YC[1] - d.YC[0])
     rAs = d.get("rAs", dyC * drC)
     zeta = (
@@ -197,7 +213,7 @@ def vort1(d, g, **kwargs):
             boundary="" if g.axes["Y"]._periodic else "fill",
             fill_value=np.nan,
         )
-        - g.diff(d.VVEL * dyC, "Z", boundary="fill", fill_value=np.nan)
+        - g.diff(VVEL * dyC, "Z", boundary="fill", fill_value=np.nan)
         * np.sign(d.Zl[1] - d.Zl[0])
     ) / rAs
     zeta.attrs.update(
