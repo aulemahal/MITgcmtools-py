@@ -42,7 +42,7 @@ def _get_np_from_xr(arr):
     return arr
 
 def writebin(filename, arr, precision=64, endianness='>'):
-    """Write a numpy array to a IEEE (Big-Endian) binary file."""
+    """Write a numpy array to a binary file."""
     arr = _get_np_from_xr(arr)
     # Python is in C-layout (X, Y, Z), so we have to flip to F-layout (Z, Y, X)
     if arr.ndim == 2: 
@@ -61,8 +61,8 @@ def write_concatenate(filename, *arrs, precision=64, endianness='>'):
     conc = np.stack(arrays, axis=-1)
     writeIEEEbin(filename, conc, precision=precision)
 
-def readIEEEbin(filename, shape, precision=64, endianness='>'):
-    """Read a IEEE (Big-Endian) binary file.
+def readbin(filename, shape, precision=64, endianness='>'):
+    """Read a binary file.
 
     Arguments:
         filename -- Filename to read
