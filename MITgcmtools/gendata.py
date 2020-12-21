@@ -42,21 +42,27 @@ def _get_np_from_xr(arr):
     return arr
 
 def writebin(filename, arr, precision=64, endianness='>'):
-    """Write an array to a binary file in F-order."""
+    """Write a numpy array to a IEEE (Big-Endian) binary file."""
     arr = _get_np_from_xr(arr)
+    # Python is in C-layout (X, Y, Z), so we have to flip to F-layout (Z, Y, X)
+    if arr.ndim == 2: 
+        arr = arr.T
+    elif arr.ndim == 3:
+        arr = arr.swapaxes(0, 2)
     # Precision is in bits, the dtype is in Bytes. > : IEEE, f : float, 4/8 : precision
     print(f"Writing data of shape {arr.shape} to file {filename} with precision of {precision} bits using '{endianness}'")
     with open(filename, 'wb') as f:
-        f.write(arr.astype("{0}f{1:d}".format(endianness, precision // 8)).tobytes('F'))
+        f.write(arr.astype("{0}f{1:d}".format(endianness, precision // 8)).tobytes('C'))
+
 
 def write_concatenate(filename, *arrs, precision=64, endianness='>'):
     """Write multiple numpy arrays to a single file."""
     arrays = [_get_np_from_xr(arr) for arr in arrs]
     conc = np.stack(arrays, axis=-1)
-    writeIEEEbin(filename, conc, precision=precision, endianness=endianness)
+    writeIEEEbin(filename, conc, precision=precision)
 
-def readbin(filename, shape, precision=64, endianness='>'):
-    """Read a binary file.
+def readIEEEbin(filename, shape, precision=64, endianness='>'):
+    """Read a IEEE (Big-Endian) binary file.
 
     Arguments:
         filename -- Filename to read
